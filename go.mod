@@ -1,3 +1,3 @@
-module github.com/isaqueveras/outis
+module github.com/Brisanet/outis
 
 go 1.18

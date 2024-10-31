@@ -9,7 +9,7 @@ package main
 import (
   "time"
 
-  "github.com/isaqueveras/outis"
+  "github.com/Brisanet/outis"
 )
 
 func main() {
