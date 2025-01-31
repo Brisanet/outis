@@ -31,6 +31,14 @@ type Context struct {
 	indicator  []*indicator
 	log        ILogger
 	context    context.Context
+	// TODO: cancelCtx
+}
+
+func (ctx *Context) SetContext(newCtx context.Context) *Context {
+	copy := ctx.copy()
+	copy.context = newCtx
+
+	return copy
 }
 
 // Context returns the application context
@@ -38,39 +46,77 @@ func (ctx *Context) Context() context.Context {
 	return ctx.context
 }
 
+// TODO: context.Context -> outis.Context
+
+func (ctx *Context) copy() *Context {
+	parentContext, _ := context.WithCancel(ctx.context) //nolint
+
+	return &Context{
+		indicator: ctx.indicator,
+		metadata:  ctx.metadata,
+		log:       ctx.log,
+		Interval:  ctx.Interval,
+		RunAt:     ctx.RunAt,
+		Watcher:   ctx.Watcher,
+		context:   parentContext,
+	}
+}
+
 // GetLatency get script execution latency (in seconds)
 func (ctx *Context) GetLatency() float64 {
 	return ctx.latency.Seconds()
 }
 
-// Error creates a new error message
-func (ctx *Context) Error(msg string, v ...interface{}) {
-	ctx.log.Errorf(msg, v...)
+// Info executa a função Info do log do contexto
+func (ctx *Context) Info(msg string, fields ...Metadata) {
+	ctx.log.Info(msg, fields...)
 }
 
-// Info creates a new info message
-func (ctx *Context) Info(msg string, v ...interface{}) {
-	ctx.log.Infof(msg, v...)
+func (ctx *Context) Debug(msg string, fields ...Metadata) {
+	ctx.log.Debug(msg, fields...)
 }
 
-// Debug creates a new debug message
-func (ctx *Context) Debug(msg string, v ...interface{}) {
-	ctx.log.Debugf(msg, v...)
+// Error executa a função Erro do log do contexto
+func (ctx *Context) Error(err error, fields ...Metadata) {
+	ctx.log.Error(err, fields...)
 }
 
-// Warn creates a new warn message
-func (ctx *Context) Warn(msg string, v ...interface{}) {
-	ctx.log.Warnf(msg, v...)
+// ErrorMsg executa a função Erro do log do contexto com uma mensagem de erro
+func (ctx *Context) ErrorMsg(msg string, fields ...Metadata) {
+	ctx.log.ErrorMsg(msg, fields...)
 }
 
-// Panic creates a new panic message
-func (ctx *Context) Panic(msg string, v ...interface{}) {
-	ctx.log.Panicf(msg, v...)
+func (ctx *Context) Warn(msg string, fields ...Metadata) {
+	ctx.log.Warn(msg, fields...)
+}
+
+func (ctx *Context) Panic(msg string, fields ...Metadata) {
+	ctx.log.Panic(msg, fields...)
+}
+
+func (ctx *Context) Fatal(msg string, fields ...Metadata) {
+	ctx.log.Fatal(msg, fields...)
 }
 
 // Metadata method for adding data to routine metadata
-func (ctx *Context) Metadata(key string, args interface{}) {
-	ctx.metadata.Set(key, args)
+func (ctx *Context) AddSingleMetadata(key string, args interface{}) *Context {
+	copy := ctx.copy()
+	copy.metadata.Set(key, args)
+	copy.log.AddField(key, args)
+
+	return copy
+}
+
+// Metadata method for adding data to routine metadata
+func (ctx *Context) AddMetadata(metadata Metadata) *Context {
+	copy := ctx.copy()
+
+	for key, value := range metadata {
+		copy.metadata.Set(key, value)
+		copy.log.AddField(key, value)
+	}
+
+	return copy
 }
 
 func (ctx *Context) metrics(w *Watch, now time.Time) {

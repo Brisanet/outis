@@ -3,6 +3,7 @@ package outis
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"reflect"
@@ -34,13 +35,19 @@ func Watcher(id, name string, opts ...WatcherOption) *Watch {
 	watch := &Watch{
 		Id:    ID(id),
 		Name:  name,
-		log:   setupLogger(),
 		outis: newOutis(),
 		RunAt: time.Now(),
 	}
 
 	for _, opt := range opts {
 		opt(watch)
+	}
+	if watch.log == nil {
+		logger, err := NewLogger(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		watch.log = logger
 	}
 
 	return watch
@@ -49,7 +56,7 @@ func Watcher(id, name string, opts ...WatcherOption) *Watch {
 // Wait method responsible for keeping routines running
 func (watch *Watch) Wait() {
 	if err := watch.outis.Wait(); err != nil {
-		watch.log.Errorf("%s", err.Error())
+		watch.log.Error(err)
 		return
 	}
 }
@@ -95,7 +102,7 @@ func (watch *Watch) Go(opts ...Option) {
 
 		defer func() {
 			if r := recover(); r != nil {
-				ctx.log.Panicf(fmt.Sprintf("%v", r))
+				ctx.log.Panic(fmt.Sprintf("%v", r))
 			}
 		}()
 
@@ -108,7 +115,7 @@ func (watch *Watch) Go(opts ...Option) {
 
 		for range ticker.C {
 			if err := ctx.execute(); err != nil {
-				ctx.log.Errorf(err.Error())
+				ctx.log.Error(err)
 				continue
 			}
 		}
@@ -118,11 +125,12 @@ func (watch *Watch) Go(opts ...Option) {
 }
 
 func (ctx *Context) execute() error {
+	// TODO: validar ctx
 	now := time.Now()
 	ctx.sleep(now)
 	defer func() {
 		if r := recover(); r != nil {
-			ctx.log.Panicf(fmt.Sprintf("%v", r))
+			ctx.log.Panic(fmt.Sprintf("%v", r))
 		}
 	}()
 

@@ -12,7 +12,9 @@ type server struct{}
 func newOutis() IOutis { return &server{} }
 
 func (server) Go(fn func() error) { fn() }
-func (server) Wait() error        { return nil }
+
+// TODO: add wait
+func (server) Wait() error { return nil }
 
 // Init implements a business rule when initializing a routine
 func (server) Init(ctx *Context) error {
