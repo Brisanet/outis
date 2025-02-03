@@ -8,46 +8,55 @@ import (
 )
 
 func main() {
-	log, err := outis.NewLogger("v1/example")
+	// Inicializa o log
+	log, err := outis.NewLogger("scriptName", outis.Options{
+		Level: outis.DebugLevel,
+	})
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	// Initialize Outis to be able to add routines
-	watch := outis.Watcher("8b1d6a18-5f3d-4482-a574-35d3965c8783", "v1/example") // outis.Logger(),                // Option to implement logs interface
-	// outis.WithOutisInterface(nil), // Option to implement outis interface
 
-	go watch.Go(
-		// Routine identifier to perform concurrency control
+	// Inicializa o outis para receber rotinas
+	watch := outis.Watcher("8b1d6a18-5f3d-4482-a574-35d3965c8783", "scriptName",
+		// Passa o log personalizado, se não informado é criado um log padrão
+		outis.Logger(log),
+	)
+
+	watch.Go(
+		// Identificador de rotina para executar controle de concorrência
 		outis.WithID("422138b3-c721-4021-97ab-8cf7e174fb4f"),
 
 		outis.WithName("Here is the name of my routine"),
 		outis.WithDesc("Here is the description of my routine"),
 
-		// It will run every 10 second
+		// Executará a cada 10 segundos
 		outis.WithInterval(time.Second),
-		// It will run from 12pm to 4pm.
-		// by default, there are no time restrictions.
+
+		// Executará de 12pm a 4pm.
+		// por padrão, não há restrições de tempo.
 		// outis.WithHours(12, 16),
 
-		// Here the script function that will be executed will be passed
+		// Executará somente uma vez
+		// outis.WithNotUseLoop(),
+
+		// Aqui é passada a função do script que será executada
 		outis.WithScript(func(ctx *outis.Context) error {
-			log.Info("aaaaaaaaaaaaaaaaaaa")
 			ctx.Info("this is an information message")
 			ctx.Error(errors.New("this is an error message"))
 
-			ctx.AddSingleMetadata("client_ids", []int64{234234})
-			ctx.AddMetadata(outis.Metadata{"notification": outis.Metadata{
+			ctx = ctx.AddSingleMetadata("client_ids", []int64{234234})
+			ctx = ctx.AddMetadata(outis.Metadata{"notification": outis.Metadata{
 				"client_id": 234234,
 				"message":   "Hi, we are notifying you.",
-				"fcm":       "3p2okrmionfiun2uni3nfin2i3f",
+				"fcm":       "231223",
 			}})
 
-			ctx.Debug("Hello")
+			ctx.Debug("this is an debug message with metadata")
 
 			return nil
 		}),
 	)
 
-	// Method that maintains routine in the process
+	// Método que mantém a rotina no processo
 	watch.Wait()
 }

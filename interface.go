@@ -16,13 +16,14 @@ type IOutis interface {
 
 // ILogger methods for logging messages.
 type ILogger interface {
-	AddFields(fields ...Metadata) ILogger
+	Level() LogLevel
+	Info(msg string, fields ...LogFields)
+	Error(erro error, fields ...LogFields)
+	ErrorMsg(errorMsg string, fields ...LogFields)
+	Fatal(msg string, fields ...LogFields)
+	Panic(msg string, fields ...LogFields)
+	Debug(msg string, fields ...LogFields)
+	Warn(msg string, fields ...LogFields)
+	AddFields(fields ...LogFields) ILogger
 	AddField(key string, value interface{}) ILogger
-	Info(msg string, fields ...Metadata)
-	Error(erro error, fields ...Metadata)
-	ErrorMsg(errorMsg string, fields ...Metadata)
-	Fatal(msg string, fields ...Metadata)
-	Panic(msg string, fields ...Metadata)
-	Debug(msg string, fields ...Metadata)
-	Warn(msg string, fields ...Metadata)
 }

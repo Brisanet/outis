@@ -7,52 +7,63 @@ The outis library helps you create and manage routines, schedule execution time,
 package main
 
 import (
-  "time"
+	"errors"
+	"time"
 
-  "github.com/Brisanet/outis"
+	"github.com/Brisanet/outis"
 )
 
 func main() {
-  // Initialize Outis to be able to add routines
-  watch := outis.Watcher("8b1d6a18-5f3d-4482-a574-35d3965c8783", "v1/example",
-    outis.WithLogger(nil),         // Option to implement logs interface
-    outis.WithOutisInterface(nil), // Option to implement outis interface
-  )
+	// Inicializa o log
+	log, err := outis.NewLogger("scriptName", outis.Options{
+		Level: outis.DebugLevel,
+	})
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
-  go watch.Go(
-    // Routine identifier to perform concurrency control
-    outis.WithID("422138b3-c721-4021-97ab-8cf7e174fb4f"),
+	// Inicializa o outis para receber rotinas
+	watch := outis.Watcher("8b1d6a18-5f3d-4482-a574-35d3965c8783", "scriptName",
+		// Passa o log personalizado, se não informado é criado um log padrão
+		outis.Logger(log),
+	)
 
-    outis.WithName("Here is the name of my routine"),
-    outis.WithDesc("Here is the description of my routine"),
+	watch.Go(
+		// Identificador de rotina para executar controle de concorrência
+		outis.WithID("422138b3-c721-4021-97ab-8cf7e174fb4f"),
 
-    // It will run every 10 second
-    outis.WithInterval(time.Second * 10),
+		outis.WithName("Here is the name of my routine"),
+		outis.WithDesc("Here is the description of my routine"),
 
-    // It will run from 12pm to 4pm.
-    // by default, there are no time restrictions.
-    outis.WithHours(12, 16),
+		// Executará a cada 10 segundos
+		outis.WithInterval(time.Second),
 
-    // Time when routine information will be updated
-    outis.WithLoadInterval(time.Second * 30),
+		// Executará de 12pm a 4pm.
+		// por padrão, não há restrições de tempo.
+		// outis.WithHours(12, 16),
 
-    // Here the script function that will be executed will be passed
-    outis.WithScript(func(ctx *outis.Context) {
-      ctx.Info("this is an information message")
-      ctx.Error("error: %v", errors.New("this is an error message"))
+		// Executará somente uma vez
+		// outis.WithNotUseLoop(),
 
-      ctx.Metric("client_ids", []int64{234234})
-      ctx.Metric("notification", outis.Metric{
-        "client_id": 234234,
-        "message":   "Hi, we are notifying you.",
-        "fcm":       "3p2okrmionfiun2uni3nfin2i3f",
-      })
+		// Aqui é passada a função do script que será executada
+		outis.WithScript(func(ctx *outis.Context) error {
+			ctx.Info("this is an information message")
+			ctx.Error(errors.New("this is an error message"))
 
-      ctx.Debug("Hello")
-    }),
-  )
+			ctx = ctx.AddSingleMetadata("client_ids", []int64{234234})
+			ctx = ctx.AddMetadata(outis.Metadata{"notification": outis.Metadata{
+				"client_id": 234234,
+				"message":   "Hi, we are notifying you.",
+				"fcm":       "231223",
+			}})
 
-  // Method that maintains routine in the process
-  watch.Wait()
+			ctx.Debug("this is an debug message with metadata")
+
+			return nil
+		}),
+	)
+
+	// Método que mantém a rotina no processo
+	watch.Wait()
 }
 ```

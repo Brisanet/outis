@@ -68,41 +68,41 @@ func (ctx *Context) GetLatency() float64 {
 }
 
 // Info executa a função Info do log do contexto
-func (ctx *Context) Info(msg string, fields ...Metadata) {
+func (ctx *Context) Info(msg string, fields ...LogFields) {
 	ctx.log.Info(msg, fields...)
 }
 
-func (ctx *Context) Debug(msg string, fields ...Metadata) {
-	ctx.log.Debug(msg, fields...)
-}
-
 // Error executa a função Erro do log do contexto
-func (ctx *Context) Error(err error, fields ...Metadata) {
+func (ctx *Context) Error(err error, fields ...LogFields) {
 	ctx.log.Error(err, fields...)
 }
 
 // ErrorMsg executa a função Erro do log do contexto com uma mensagem de erro
-func (ctx *Context) ErrorMsg(msg string, fields ...Metadata) {
+func (ctx *Context) ErrorMsg(msg string, fields ...LogFields) {
 	ctx.log.ErrorMsg(msg, fields...)
 }
 
-func (ctx *Context) Warn(msg string, fields ...Metadata) {
-	ctx.log.Warn(msg, fields...)
+func (ctx *Context) Fatal(msg string, fields ...LogFields) {
+	ctx.log.Fatal(msg, fields...)
 }
 
-func (ctx *Context) Panic(msg string, fields ...Metadata) {
+func (ctx *Context) Panic(msg string, fields ...LogFields) {
 	ctx.log.Panic(msg, fields...)
 }
 
-func (ctx *Context) Fatal(msg string, fields ...Metadata) {
-	ctx.log.Fatal(msg, fields...)
+func (ctx *Context) Debug(msg string, fields ...LogFields) {
+	ctx.log.Debug(msg, fields...)
+}
+
+func (ctx *Context) Warn(msg string, fields ...LogFields) {
+	ctx.log.Warn(msg, fields...)
 }
 
 // Metadata method for adding data to routine metadata
 func (ctx *Context) AddSingleMetadata(key string, args interface{}) *Context {
 	copy := ctx.copy()
 	copy.metadata.Set(key, args)
-	copy.log.AddField(key, args)
+	copy.log = copy.log.AddField(key, args)
 
 	return copy
 }
@@ -113,7 +113,7 @@ func (ctx *Context) AddMetadata(metadata Metadata) *Context {
 
 	for key, value := range metadata {
 		copy.metadata.Set(key, value)
-		copy.log.AddField(key, value)
+		copy.log = copy.log.AddField(key, value)
 	}
 
 	return copy
