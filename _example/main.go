@@ -41,8 +41,8 @@ func main() {
 
 		// Aqui é passada a função do script que será executada
 		outis.WithScript(func(ctx *outis.Context) error {
-			ctx.Info("this is an information message")
-			ctx.Error(errors.New("this is an error message"))
+			ctx.LogInfo("this is an information message")
+			ctx.LogError(errors.New("this is an error message"))
 
 			ctx = ctx.AddSingleMetadata("client_ids", []int64{234234})
 			ctx = ctx.AddMetadata(outis.Metadata{"notification": outis.Metadata{
@@ -51,7 +51,7 @@ func main() {
 				"fcm":       "231223",
 			}})
 
-			ctx.Debug("this is an debug message with metadata")
+			ctx.LogDebug("this is an debug message with metadata")
 
 			return nil
 		}),

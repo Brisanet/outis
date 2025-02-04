@@ -23,15 +23,15 @@ type Context struct {
 	RunAt     time.Time
 	Watcher   Watch
 
-	script     func(*Context) error
-	metadata   Metadata
-	latency    time.Duration
-	notUseLoop bool
-	histrogram []*histogram
-	indicator  []*indicator
-	log        ILogger
-	context    context.Context
-	// TODO: cancelCtx
+	script            func(*Context) error
+	metadata          Metadata
+	latency           time.Duration
+	notUseLoop        bool
+	histrogram        []*histogram
+	indicator         []*indicator
+	log               ILogger
+	context           context.Context
+	contextCancelFunc context.CancelFunc
 }
 
 func (ctx *Context) SetContext(newCtx context.Context) *Context {
@@ -46,19 +46,30 @@ func (ctx *Context) Context() context.Context {
 	return ctx.context
 }
 
-// TODO: context.Context -> outis.Context
+func (ctx *Context) Cancel() {
+	ctx.contextCancelFunc()
+}
+
+func (ctx *Context) Done() <-chan struct{} {
+	return ctx.context.Done()
+}
+
+func (ctx *Context) Err() error {
+	return ctx.context.Err()
+}
 
 func (ctx *Context) copy() *Context {
-	parentContext, _ := context.WithCancel(ctx.context) //nolint
+	childContext, childContextCancelFunc := context.WithCancel(ctx.context)
 
 	return &Context{
-		indicator: ctx.indicator,
-		metadata:  ctx.metadata,
-		log:       ctx.log,
-		Interval:  ctx.Interval,
-		RunAt:     ctx.RunAt,
-		Watcher:   ctx.Watcher,
-		context:   parentContext,
+		indicator:         ctx.indicator,
+		metadata:          ctx.metadata,
+		log:               ctx.log,
+		Interval:          ctx.Interval,
+		RunAt:             ctx.RunAt,
+		Watcher:           ctx.Watcher,
+		context:           childContext,
+		contextCancelFunc: childContextCancelFunc,
 	}
 }
 
@@ -68,33 +79,33 @@ func (ctx *Context) GetLatency() float64 {
 }
 
 // Info executa a função Info do log do contexto
-func (ctx *Context) Info(msg string, fields ...LogFields) {
+func (ctx *Context) LogInfo(msg string, fields ...LogFields) {
 	ctx.log.Info(msg, fields...)
 }
 
 // Error executa a função Erro do log do contexto
-func (ctx *Context) Error(err error, fields ...LogFields) {
+func (ctx *Context) LogError(err error, fields ...LogFields) {
 	ctx.log.Error(err, fields...)
 }
 
 // ErrorMsg executa a função Erro do log do contexto com uma mensagem de erro
-func (ctx *Context) ErrorMsg(msg string, fields ...LogFields) {
+func (ctx *Context) LogErrorMsg(msg string, fields ...LogFields) {
 	ctx.log.ErrorMsg(msg, fields...)
 }
 
-func (ctx *Context) Fatal(msg string, fields ...LogFields) {
+func (ctx *Context) LogFatal(msg string, fields ...LogFields) {
 	ctx.log.Fatal(msg, fields...)
 }
 
-func (ctx *Context) Panic(msg string, fields ...LogFields) {
+func (ctx *Context) LogPanic(msg string, fields ...LogFields) {
 	ctx.log.Panic(msg, fields...)
 }
 
-func (ctx *Context) Debug(msg string, fields ...LogFields) {
+func (ctx *Context) LogDebug(msg string, fields ...LogFields) {
 	ctx.log.Debug(msg, fields...)
 }
 
-func (ctx *Context) Warn(msg string, fields ...LogFields) {
+func (ctx *Context) LogWarn(msg string, fields ...LogFields) {
 	ctx.log.Warn(msg, fields...)
 }
 

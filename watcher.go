@@ -74,14 +74,17 @@ func Wait() {
 // Go create a new routine in the watcher
 func (watch *Watch) Go(opts ...Option) {
 	watch.outis.Go(func() error {
+		childContext, childContextCancelFunc := context.WithCancel(context.Background())
+
 		ctx := &Context{
-			indicator: make([]*indicator, 0),
-			metadata:  make(Metadata),
-			log:       watch.log,
-			Interval:  time.Minute,
-			RunAt:     time.Now(),
-			Watcher:   *watch,
-			context:   context.Background(),
+			indicator:         make([]*indicator, 0),
+			metadata:          make(Metadata),
+			log:               watch.log,
+			Interval:          time.Minute,
+			RunAt:             time.Now(),
+			Watcher:           *watch,
+			context:           childContext,
+			contextCancelFunc: childContextCancelFunc,
 		}
 
 		for _, opt := range opts {
@@ -113,19 +116,31 @@ func (watch *Watch) Go(opts ...Option) {
 		ticker := time.NewTicker(ctx.Interval)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			if err := ctx.execute(); err != nil {
-				ctx.log.Error(err)
-				continue
+		for {
+			select {
+			case <-ctx.context.Done():
+				return ctx.context.Err()
+			case _, isOpen := <-ticker.C:
+				if !isOpen {
+					return nil
+				}
+
+				var err error
+
+				if err = ctx.context.Err(); err != nil {
+					return err
+				}
+
+				if err = ctx.execute(); err != nil {
+					ctx.log.Error(err)
+					continue
+				}
 			}
 		}
-
-		return nil
 	})
 }
 
 func (ctx *Context) execute() error {
-	// TODO: validar ctx
 	now := time.Now()
 	ctx.sleep(now)
 	defer func() {
@@ -138,7 +153,7 @@ func (ctx *Context) execute() error {
 		return err
 	}
 
-	if err := ctx.script(ctx); err != nil {
+	if err := ctx.script(ctx.copy()); err != nil {
 		return err
 	}
 
