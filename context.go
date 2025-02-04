@@ -34,13 +34,6 @@ type Context struct {
 	contextCancelFunc context.CancelFunc
 }
 
-func (ctx *Context) SetContext(newCtx context.Context) *Context {
-	copy := ctx.copy()
-	copy.context = newCtx
-
-	return copy
-}
-
 // Context returns the application context
 func (ctx *Context) Context() context.Context {
 	return ctx.context
@@ -58,8 +51,13 @@ func (ctx *Context) Err() error {
 	return ctx.context.Err()
 }
 
-func (ctx *Context) copy() *Context {
-	childContext, childContextCancelFunc := context.WithCancel(ctx.context)
+func (ctx *Context) Copy(baseCtxIn ...context.Context) *Context {
+	var baseCtx = ctx.context
+
+	if len(baseCtxIn) > 0 {
+		baseCtx = baseCtxIn[0]
+	}
+	childContext, childContextCancelFunc := context.WithCancel(baseCtx)
 
 	return &Context{
 		indicator:         ctx.indicator,
@@ -111,7 +109,7 @@ func (ctx *Context) LogWarn(msg string, fields ...LogFields) {
 
 // Metadata method for adding data to routine metadata
 func (ctx *Context) AddSingleMetadata(key string, args interface{}) *Context {
-	copy := ctx.copy()
+	copy := ctx.Copy()
 	copy.metadata.Set(key, args)
 	copy.log = copy.log.AddField(key, args)
 
@@ -120,7 +118,7 @@ func (ctx *Context) AddSingleMetadata(key string, args interface{}) *Context {
 
 // Metadata method for adding data to routine metadata
 func (ctx *Context) AddMetadata(metadata Metadata) *Context {
-	copy := ctx.copy()
+	copy := ctx.Copy()
 
 	for key, value := range metadata {
 		copy.metadata.Set(key, value)

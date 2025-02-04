@@ -153,7 +153,7 @@ func (ctx *Context) execute() error {
 		return err
 	}
 
-	if err := ctx.script(ctx.copy()); err != nil {
+	if err := ctx.script(ctx.Copy()); err != nil {
 		return err
 	}
 
