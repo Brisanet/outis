@@ -11,9 +11,9 @@ type period struct {
 	startMinute, endMinute uint
 }
 
-// Context defines the data structure of the routine context
+// Context defines the data structure of the routine context.
 type Context struct {
-	Id        ID
+	ID        ID
 	RoutineID ID
 	Name      string
 	Desc      string
@@ -27,120 +27,139 @@ type Context struct {
 	metadata          Metadata
 	latency           time.Duration
 	notUseLoop        bool
-	histrogram        []*histogram
-	indicator         []*indicator
+	histogram         []*Histogram
+	indicator         []*Indicator
 	log               ILogger
-	context           context.Context
+	context           context.Context //nolint:containedctx
 	contextCancelFunc context.CancelFunc
 }
 
-// Context returns the application context
+// Context retorna o context.Context.
 func (ctx *Context) Context() context.Context {
 	return ctx.context
 }
 
+// Cancel cancela o contexto.
 func (ctx *Context) Cancel() {
 	ctx.contextCancelFunc()
 }
 
+// Done retorna um canal que espera o canal ser finalizado.
 func (ctx *Context) Done() <-chan struct{} {
 	return ctx.context.Done()
 }
 
+// Err retorna o erro no contexto.
 func (ctx *Context) Err() error {
-	return ctx.context.Err()
+	return ctx.context.Err() //nolint:wrapcheck
 }
 
+// Copy cria um cópia do contexto atual.
 func (ctx *Context) Copy(baseCtxIn ...context.Context) *Context {
-	var baseCtx = ctx.context
+	baseCtx := ctx.context
 
 	if len(baseCtxIn) > 0 {
 		baseCtx = baseCtxIn[0]
 	}
+
 	childContext, childContextCancelFunc := context.WithCancel(baseCtx)
 
 	return &Context{
-		indicator:         ctx.indicator,
-		metadata:          ctx.metadata,
-		log:               ctx.log,
+		ID:                ctx.ID,
+		RoutineID:         ctx.RoutineID,
+		Name:              ctx.Name,
+		Desc:              ctx.Desc,
+		period:            ctx.period,
 		Interval:          ctx.Interval,
+		Path:              ctx.Path,
 		RunAt:             ctx.RunAt,
 		Watcher:           ctx.Watcher,
+		script:            ctx.script,
+		metadata:          ctx.metadata,
+		latency:           ctx.latency,
+		notUseLoop:        ctx.notUseLoop,
+		histogram:         make([]*Histogram, 0),
+		indicator:         make([]*Indicator, 0),
+		log:               ctx.log,
 		context:           childContext,
 		contextCancelFunc: childContextCancelFunc,
 	}
 }
 
-// GetLatency get script execution latency (in seconds)
+// GetLatency get script execution latency (in seconds).
 func (ctx *Context) GetLatency() float64 {
 	return ctx.latency.Seconds()
 }
 
-// Info executa a função Info do log do contexto
+// LogInfo executa a função Info do log do contexto.
 func (ctx *Context) LogInfo(msg string, fields ...LogFields) {
 	ctx.log.Info(msg, fields...)
 }
 
-// Error executa a função Erro do log do contexto
+// LogError executa a função Error do log do contexto.
 func (ctx *Context) LogError(err error, fields ...LogFields) {
 	ctx.log.Error(err, fields...)
 }
 
-// ErrorMsg executa a função Erro do log do contexto com uma mensagem de erro
+// LogErrorMsg executa a função ErrorMsg do log do contexto com uma mensagem de erro.
 func (ctx *Context) LogErrorMsg(msg string, fields ...LogFields) {
 	ctx.log.ErrorMsg(msg, fields...)
 }
 
+// LogFatal executa a função Fatal do log do contexto.
 func (ctx *Context) LogFatal(msg string, fields ...LogFields) {
 	ctx.log.Fatal(msg, fields...)
 }
 
+// LogPanic executa a função Panic do log do contexto.
 func (ctx *Context) LogPanic(msg string, fields ...LogFields) {
 	ctx.log.Panic(msg, fields...)
 }
 
+// LogDebug executa a função Debug do log do contexto.
 func (ctx *Context) LogDebug(msg string, fields ...LogFields) {
 	ctx.log.Debug(msg, fields...)
 }
 
+// LogWarn executa a função Warn do log do contexto.
 func (ctx *Context) LogWarn(msg string, fields ...LogFields) {
 	ctx.log.Warn(msg, fields...)
 }
 
-// Metadata method for adding data to routine metadata
+// AddSingleMetadata método adiciona 1 metadata no contexto.
 func (ctx *Context) AddSingleMetadata(key string, args interface{}) *Context {
-	copy := ctx.Copy()
-	copy.metadata.Set(key, args)
-	copy.log = copy.log.AddField(key, args)
+	copyCtx := ctx.Copy()
+	copyCtx.metadata.Set(key, args)
+	copyCtx.log = copyCtx.log.AddField(key, args)
 
-	return copy
+	return copyCtx
 }
 
-// Metadata method for adding data to routine metadata
+// AddMetadata método adiciona metadata no contexto.
 func (ctx *Context) AddMetadata(metadata Metadata) *Context {
-	copy := ctx.Copy()
+	copyCtx := ctx.Copy()
 
 	for key, value := range metadata {
-		copy.metadata.Set(key, value)
-		copy.log = copy.log.AddField(key, value)
+		copyCtx.metadata.Set(key, value)
+		copyCtx.log = copyCtx.log.AddField(key, value)
 	}
 
-	return copy
+	return copyCtx
 }
 
-func (ctx *Context) metrics(w *Watch, now time.Time) {
-	w.outis.Event(ctx, EventMetric{
-		ID:         ctx.Id.ToString(),
+func (ctx *Context) metrics(watch *Watch, now time.Time) {
+	watch.outis.Event(ctx, EventMetric{
+		ID:         ctx.ID.ToString(),
 		StartedAt:  now,
 		FinishedAt: time.Now(),
 		Latency:    time.Since(now),
 		Metadata:   ctx.metadata,
 		Indicators: ctx.indicator,
-		Histograms: ctx.histrogram,
+		Histograms: ctx.histogram,
 		Watcher: WatcherMetric{
-			ID:    w.Id.ToString(),
-			Name:  w.Name,
-			RunAt: w.RunAt,
+			ID:    watch.Id.ToString(),
+			Name:  watch.Name,
+			RunAt: watch.RunAt,
 		},
 		Routine: RoutineMetric{
 			ID:        ctx.RoutineID.ToString(),
@@ -150,7 +169,7 @@ func (ctx *Context) metrics(w *Watch, now time.Time) {
 		},
 	})
 
-	ctx.metadata, ctx.indicator, ctx.histrogram = Metadata{}, []*indicator{}, []*histogram{}
+	ctx.metadata, ctx.indicator, ctx.histogram = Metadata{}, []*Indicator{}, []*Histogram{}
 }
 
 func (ctx *Context) sleep(now time.Time) {

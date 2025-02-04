@@ -9,7 +9,7 @@ import (
 
 func main() {
 	// Inicializa o log
-	log, err := outis.NewLogger("scriptName", outis.Options{
+	log, err := outis.NewLogger("scriptName", outis.LogOptions{
 		Level: outis.DebugLevel,
 	})
 	if err != nil {

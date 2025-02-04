@@ -77,7 +77,7 @@ func (watch *Watch) Go(opts ...Option) {
 		childContext, childContextCancelFunc := context.WithCancel(context.Background())
 
 		ctx := &Context{
-			indicator:         make([]*indicator, 0),
+			indicator:         make([]*Indicator, 0),
 			metadata:          make(Metadata),
 			log:               watch.log,
 			Interval:          time.Minute,
@@ -118,8 +118,10 @@ func (watch *Watch) Go(opts ...Option) {
 
 		for {
 			select {
+			// Espera o contexto ser finalizado
 			case <-ctx.context.Done():
 				return ctx.context.Err()
+			// Espera a próxima execução com base no ticker
 			case _, isOpen := <-ticker.C:
 				if !isOpen {
 					return nil
@@ -127,6 +129,7 @@ func (watch *Watch) Go(opts ...Option) {
 
 				var err error
 
+				// Caso o contexto esteja com erro o script é finalizado
 				if err = ctx.context.Err(); err != nil {
 					return err
 				}
