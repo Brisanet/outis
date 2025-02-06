@@ -1,9 +1,6 @@
 package outis
 
 import (
-	"runtime"
-	"strconv"
-
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -94,7 +91,7 @@ func NewLogger(appName string, optionsIn ...LogOptions) (ILogger, error) {
 	cfg.OutputPaths = append([]string{"stdout"}, options.OutputPaths...)
 	cfg.ErrorOutputPaths = append([]string{"stderr"}, options.ErrorOutputPaths...)
 
-	finalLogger.logger, err = cfg.Build()
+	finalLogger.logger, err = cfg.Build(zap.AddStacktrace(zapLevel))
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +115,7 @@ func (l logger) Level() LogLevel {
 
 // Info executa um log de level Info
 func (l logger) Info(msg string, fields ...LogFields) {
-	l.addStackTrace().addFields(fields...).logger.Info(msg)
+	l.addFields(fields...).logger.Info(msg)
 }
 
 // Error executa um log de level Error
@@ -128,32 +125,32 @@ func (l logger) Error(erro error, fields ...LogFields) {
 	// TODO: Adicionar tratamento para error
 	fields = append(fields, LogFields{"cause": erro.Error()})
 
-	l.addStackTrace().addFields(fields...).logger.Error(mensagemErro)
+	l.addFields(fields...).logger.Error(mensagemErro)
 }
 
 // ErrorMsg executa um log de level Error com mensagem
 func (l logger) ErrorMsg(errorMsg string, fields ...LogFields) {
-	l.addStackTrace().addFields(fields...).logger.Error(errorMsg)
+	l.addFields(fields...).logger.Error(errorMsg)
 }
 
 // Fatal executa um log de level Fatal
 func (l logger) Fatal(msg string, fields ...LogFields) {
-	l.addStackTrace().addFields(fields...).logger.Fatal(msg)
+	l.addFields(fields...).logger.Fatal(msg)
 }
 
 // Panic executa um log de level Panic
 func (l logger) Panic(msg string, fields ...LogFields) {
-	l.addStackTrace().addFields(fields...).logger.Panic(msg)
+	l.addFields(fields...).logger.Panic(msg)
 }
 
 // Debug executa um log de level Debug
 func (l logger) Debug(msg string, fields ...LogFields) {
-	l.addStackTrace().addFields(fields...).logger.Debug(msg)
+	l.addFields(fields...).logger.Debug(msg)
 }
 
 // Warn executa um log de level Warn
 func (l logger) Warn(msg string, fields ...LogFields) {
-	l.addStackTrace().addFields(fields...).logger.Warn(msg)
+	l.addFields(fields...).logger.Warn(msg)
 }
 
 // AddFields adiciona campos ao Logger
@@ -174,26 +171,4 @@ func (l logger) addFields(fields ...LogFields) logger {
 // AddField adiciona um campo ao Logger
 func (l logger) AddField(key string, value interface{}) ILogger {
 	return l.addFields(LogFields{key: value})
-}
-
-func (l logger) addStackTrace() logger {
-	return l.addFields(LogFields{"stack_trace": getStackTrace()})
-}
-
-func getStackTrace() (stackTrace []string) {
-	const depth = 32
-	var pcs [depth]uintptr
-	runtime.Callers(3, pcs[:])
-
-	for ii := range pcs {
-		pc := pcs[ii] - 1
-		functionFound := runtime.FuncForPC(pc)
-		if functionFound == nil {
-			continue
-		}
-		file, line := functionFound.FileLine(pc)
-		stackTrace = append(stackTrace, file+":"+strconv.Itoa(line))
-	}
-
-	return stackTrace
 }
