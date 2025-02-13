@@ -1,9 +1,3 @@
-# Outis
-A biblioteca outis ajuda você a criar e gerenciar rotinas, programar tempo de execução e controlar a concorrência entre outros processos.
-
-## Exemplo de como utilizar
-
-```go
 package main
 
 import (
@@ -15,7 +9,7 @@ import (
 
 func main() {
 	// Inicializa o log
-	log, err := outis.NewLogger("scriptName", outis.Options{
+	log, err := outis.NewLogger("scriptName", outis.LogOptions{
 		Level: outis.DebugLevel,
 	})
 	if err != nil {
@@ -66,5 +60,3 @@ func main() {
 	// Método que mantém a rotina no processo
 	watch.Wait()
 }
-
-```

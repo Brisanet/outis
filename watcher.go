@@ -3,6 +3,7 @@ package outis
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"reflect"
@@ -34,13 +35,19 @@ func Watcher(id, name string, opts ...WatcherOption) *Watch {
 	watch := &Watch{
 		Id:    ID(id),
 		Name:  name,
-		log:   setupLogger(),
 		outis: newOutis(),
 		RunAt: time.Now(),
 	}
 
 	for _, opt := range opts {
 		opt(watch)
+	}
+	if watch.log == nil {
+		logger, err := NewLogger(name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		watch.log = logger
 	}
 
 	return watch
@@ -49,7 +56,7 @@ func Watcher(id, name string, opts ...WatcherOption) *Watch {
 // Wait method responsible for keeping routines running
 func (watch *Watch) Wait() {
 	if err := watch.outis.Wait(); err != nil {
-		watch.log.Errorf("%s", err.Error())
+		watch.log.Error(err)
 		return
 	}
 }
@@ -67,14 +74,17 @@ func Wait() {
 // Go create a new routine in the watcher
 func (watch *Watch) Go(opts ...Option) {
 	watch.outis.Go(func() error {
+		childContext, childContextCancelFunc := context.WithCancel(context.Background())
+
 		ctx := &Context{
-			indicator: make([]*indicator, 0),
-			metadata:  make(Metadata),
-			log:       watch.log,
-			Interval:  time.Minute,
-			RunAt:     time.Now(),
-			Watcher:   *watch,
-			context:   context.Background(),
+			indicator:         make([]*Indicator, 0),
+			metadata:          make(Metadata),
+			log:               watch.log,
+			Interval:          time.Minute,
+			RunAt:             time.Now(),
+			Watcher:           *watch,
+			context:           childContext,
+			contextCancelFunc: childContextCancelFunc,
 		}
 
 		for _, opt := range opts {
@@ -95,7 +105,7 @@ func (watch *Watch) Go(opts ...Option) {
 
 		defer func() {
 			if r := recover(); r != nil {
-				ctx.log.Panicf(fmt.Sprintf("%v", r))
+				ctx.log.Panic(fmt.Sprintf("%v", r))
 			}
 		}()
 
@@ -106,14 +116,30 @@ func (watch *Watch) Go(opts ...Option) {
 		ticker := time.NewTicker(ctx.Interval)
 		defer ticker.Stop()
 
-		for range ticker.C {
-			if err := ctx.execute(); err != nil {
-				ctx.log.Errorf(err.Error())
-				continue
+		for {
+			select {
+			// Espera o contexto ser finalizado
+			case <-ctx.context.Done():
+				return ctx.context.Err()
+			// Espera a próxima execução com base no ticker
+			case _, isOpen := <-ticker.C:
+				if !isOpen {
+					return nil
+				}
+
+				var err error
+
+				// Caso o contexto esteja com erro o script é finalizado
+				if err = ctx.context.Err(); err != nil {
+					return err
+				}
+
+				if err = ctx.execute(); err != nil {
+					ctx.log.Error(err)
+					continue
+				}
 			}
 		}
-
-		return nil
 	})
 }
 
@@ -122,7 +148,7 @@ func (ctx *Context) execute() error {
 	ctx.sleep(now)
 	defer func() {
 		if r := recover(); r != nil {
-			ctx.log.Panicf(fmt.Sprintf("%v", r))
+			ctx.log.Panic(fmt.Sprintf("%v", r))
 		}
 	}()
 
@@ -130,7 +156,7 @@ func (ctx *Context) execute() error {
 		return err
 	}
 
-	if err := ctx.script(ctx); err != nil {
+	if err := ctx.script(ctx.Copy()); err != nil {
 		return err
 	}
 

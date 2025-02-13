@@ -28,8 +28,8 @@ type EventMetric struct {
 	Watcher    WatcherMetric
 	Routine    RoutineMetric
 	Metadata   Metadata
-	Indicators []*indicator
-	Histograms []*histogram
+	Indicators []*Indicator
+	Histograms []*Histogram
 }
 
 // RoutineMetric defines the type of metric
