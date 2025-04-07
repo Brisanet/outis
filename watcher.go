@@ -73,7 +73,7 @@ func Wait() {
 
 // Go create a new routine in the watcher
 func (watch *Watch) Go(opts ...Option) {
-	watch.outis.Go(func() error {
+	watch.outis.Go(func() (err error) {
 		childContext, childContextCancelFunc := context.WithCancel(context.Background())
 
 		ctx := &Context{
@@ -91,7 +91,7 @@ func (watch *Watch) Go(opts ...Option) {
 			opt(ctx)
 		}
 
-		if err := ctx.validate(); err != nil {
+		if err = ctx.validate(); err != nil {
 			return err
 		}
 
@@ -111,6 +111,12 @@ func (watch *Watch) Go(opts ...Option) {
 
 		if ctx.notUseLoop {
 			return ctx.execute()
+		}
+
+		if ctx.executeFirstTimeNow {
+			if err = ctx.execute(); err != nil {
+				return err
+			}
 		}
 
 		ticker := time.NewTicker(ctx.Interval)

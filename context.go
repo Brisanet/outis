@@ -23,15 +23,17 @@ type Context struct {
 	RunAt     time.Time
 	Watcher   Watch
 
-	script            func(*Context) error
-	metadata          Metadata
-	latency           time.Duration
-	notUseLoop        bool
-	histogram         []*Histogram
-	indicator         []*Indicator
-	log               ILogger
-	context           context.Context //nolint:containedctx
-	contextCancelFunc context.CancelFunc
+	// Reminder: If add new fields change context.Copy function
+	script              func(*Context) error
+	metadata            Metadata
+	latency             time.Duration
+	notUseLoop          bool
+	executeFirstTimeNow bool
+	histogram           []*Histogram
+	indicator           []*Indicator
+	log                 ILogger
+	context             context.Context //nolint:containedctx
+	contextCancelFunc   context.CancelFunc
 }
 
 // Context retorna o context.Context.
@@ -65,24 +67,25 @@ func (ctx *Context) Copy(baseCtxIn ...context.Context) *Context {
 	childContext, childContextCancelFunc := context.WithCancel(baseCtx)
 
 	return &Context{
-		ID:                ctx.ID,
-		RoutineID:         ctx.RoutineID,
-		Name:              ctx.Name,
-		Desc:              ctx.Desc,
-		period:            ctx.period,
-		Interval:          ctx.Interval,
-		Path:              ctx.Path,
-		RunAt:             ctx.RunAt,
-		Watcher:           ctx.Watcher,
-		script:            ctx.script,
-		metadata:          ctx.metadata,
-		latency:           ctx.latency,
-		notUseLoop:        ctx.notUseLoop,
-		histogram:         make([]*Histogram, 0),
-		indicator:         make([]*Indicator, 0),
-		log:               ctx.log,
-		context:           childContext,
-		contextCancelFunc: childContextCancelFunc,
+		ID:                  ctx.ID,
+		RoutineID:           ctx.RoutineID,
+		Name:                ctx.Name,
+		Desc:                ctx.Desc,
+		period:              ctx.period,
+		Interval:            ctx.Interval,
+		Path:                ctx.Path,
+		RunAt:               ctx.RunAt,
+		Watcher:             ctx.Watcher,
+		script:              ctx.script,
+		metadata:            ctx.metadata,
+		latency:             ctx.latency,
+		notUseLoop:          ctx.notUseLoop,
+		executeFirstTimeNow: ctx.executeFirstTimeNow,
+		histogram:           make([]*Histogram, 0),
+		indicator:           make([]*Indicator, 0),
+		log:                 ctx.log,
+		context:             childContext,
+		contextCancelFunc:   childContextCancelFunc,
 	}
 }
 
