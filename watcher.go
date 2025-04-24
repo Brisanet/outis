@@ -74,24 +74,26 @@ func Wait() {
 // Go create a new routine in the watcher
 func (watch *Watch) Go(opts ...Option) {
 	watch.outis.Go(func() error {
-		childContext, childContextCancelFunc := context.WithCancel(context.Background())
-
-		ctx := &Context{
-			indicator:         make([]*Indicator, 0),
-			metadata:          make(Metadata),
-			log:               watch.log,
-			Interval:          time.Minute,
-			RunAt:             time.Now(),
-			Watcher:           *watch,
-			context:           childContext,
-			contextCancelFunc: childContextCancelFunc,
-		}
+		var (
+			childContext, childContextCancelFunc = context.WithCancel(context.Background())
+			ctx                                  = &Context{
+				indicator:         make([]*Indicator, 0),
+				metadata:          make(Metadata),
+				log:               watch.log,
+				Interval:          time.Minute,
+				RunAt:             time.Now(),
+				Watcher:           *watch,
+				context:           childContext,
+				contextCancelFunc: childContextCancelFunc,
+			}
+			err error
+		)
 
 		for _, opt := range opts {
 			opt(ctx)
 		}
 
-		if err := ctx.validate(); err != nil {
+		if err = ctx.validate(); err != nil {
 			return err
 		}
 
@@ -111,6 +113,12 @@ func (watch *Watch) Go(opts ...Option) {
 
 		if ctx.notUseLoop {
 			return ctx.execute()
+		}
+
+		if ctx.executeFirstTimeNow {
+			if err = ctx.execute(); err != nil {
+				ctx.log.Error(err)
+			}
 		}
 
 		ticker := time.NewTicker(ctx.Interval)
