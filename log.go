@@ -160,8 +160,10 @@ func (l logger) AddFields(fields ...LogFields) ILogger {
 
 func (l logger) addFields(fields ...LogFields) logger {
 	if len(fields) > 0 {
-		for key, value := range fields[0] {
-			l.logger = l.logger.With(zap.Any(key, value))
+		for logFieldsIndex := range fields {
+			for key, value := range fields[logFieldsIndex] {
+				l.logger = l.logger.With(zap.Any(key, value))
+			}
 		}
 	}
 
