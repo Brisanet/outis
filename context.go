@@ -23,7 +23,7 @@ type Context struct {
 	RunAt     time.Time
 	Watcher   Watch
 
-	// Reminder: If add new fields change context.Copy function
+	// Reminder: If new fields are added, change context.Copy function accordingly.
 	script              func(*Context) error
 	metadata            Metadata
 	latency             time.Duration
