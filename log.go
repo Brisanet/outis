@@ -83,7 +83,7 @@ func NewLogger(appName string, optionsIn ...LogOptions) (ILogger, error) {
 	cfg.EncoderConfig.CallerKey = "caller"
 	cfg.EncoderConfig.NameKey = "name"
 	cfg.EncoderConfig.TimeKey = "time"
-	cfg.EncoderConfig.StacktraceKey = "log_stack_trace"
+	cfg.DisableStacktrace = true
 	cfg.InitialFields = map[string]interface{}{
 		"application": appName,
 	}
@@ -91,13 +91,13 @@ func NewLogger(appName string, optionsIn ...LogOptions) (ILogger, error) {
 	cfg.OutputPaths = append([]string{"stdout"}, options.OutputPaths...)
 	cfg.ErrorOutputPaths = append([]string{"stderr"}, options.ErrorOutputPaths...)
 
-	finalLogger.logger, err = cfg.Build(zap.AddStacktrace(zapLevel))
+	finalLogger.logger, err = cfg.Build()
 	if err != nil {
 		return nil, err
 	}
 
 	finalLogger.level = options.Level
-	finalLogger.logger = finalLogger.logger.WithOptions(zap.AddCallerSkip(1))
+	finalLogger.logger = finalLogger.logger.WithOptions(zap.AddCallerSkip(2))
 
 	return &finalLogger, nil
 }
