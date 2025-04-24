@@ -83,7 +83,7 @@ func NewLogger(appName string, optionsIn ...LogOptions) (ILogger, error) {
 	cfg.EncoderConfig.CallerKey = "caller"
 	cfg.EncoderConfig.NameKey = "name"
 	cfg.EncoderConfig.TimeKey = "time"
-	cfg.EncoderConfig.StacktraceKey = "log_stack_trace"
+	cfg.DisableStacktrace = true
 	cfg.InitialFields = map[string]interface{}{
 		"application": appName,
 	}
@@ -91,13 +91,13 @@ func NewLogger(appName string, optionsIn ...LogOptions) (ILogger, error) {
 	cfg.OutputPaths = append([]string{"stdout"}, options.OutputPaths...)
 	cfg.ErrorOutputPaths = append([]string{"stderr"}, options.ErrorOutputPaths...)
 
-	finalLogger.logger, err = cfg.Build(zap.AddStacktrace(zapLevel))
+	finalLogger.logger, err = cfg.Build()
 	if err != nil {
 		return nil, err
 	}
 
 	finalLogger.level = options.Level
-	finalLogger.logger = finalLogger.logger.WithOptions(zap.AddCallerSkip(1))
+	finalLogger.logger = finalLogger.logger.WithOptions(zap.AddCallerSkip(2))
 
 	return &finalLogger, nil
 }
@@ -119,13 +119,19 @@ func (l logger) Info(msg string, fields ...LogFields) {
 }
 
 // Error executa um log de level Error
-func (l logger) Error(erro error, fields ...LogFields) {
-	mensagemErro := "Erro detectado"
+func (l logger) Error(err error, fields ...LogFields) {
+	errMsg := "Erro detectado"
 
-	// TODO: Adicionar tratamento para error
-	fields = append(fields, LogFields{"cause": erro.Error()})
+	errLogFields := LogFields{"cause": err.Error()}
 
-	l.addFields(fields...).logger.Error(mensagemErro)
+	trace, traced := reconstructStackTrace(err)
+	if traced {
+		errLogFields["trace"] = trace
+	}
+
+	fields = append(fields, errLogFields)
+
+	l.addFields(fields...).logger.Error(errMsg)
 }
 
 // ErrorMsg executa um log de level Error com mensagem
