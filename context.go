@@ -28,10 +28,6 @@ type Context interface {
 	LogWarn(msg string, fields ...LogFields)
 	AddSingleMetadata(key string, args interface{}) Context
 	AddMetadata(metadata Metadata) Context
-	// metrics(watch *Watch, now time.Time)
-	// sleep(now time.Time)
-	// mustWait(time int, start, end uint) bool
-	// validate() error
 
 	Name() string
 	RoutineID() ID
@@ -246,14 +242,17 @@ func (ctx *ContextImpl) validate() error {
 	return nil
 }
 
+// Name retorna o nome do script
 func (ctx *ContextImpl) Name() string {
 	return ctx.name
 }
 
+// RoutineID retorna o id do da rotina
 func (ctx *ContextImpl) RoutineID() ID {
 	return ctx.routineID
 }
 
+// ID retorna o id da execução
 func (ctx *ContextImpl) ID() ID {
 	return ctx.id
 }
