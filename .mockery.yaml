@@ -1,0 +1,12 @@
+quiet: False
+inpackage: False
+disable-version-string: False
+with-expecter: True
+dir: "mocks"
+mockname: "{{.InterfaceName}}"
+filename: "{{.MockName}}.go"
+outpkg: "{{.PackageName}}mocks"
+packages:
+  github.com/Brisanet/outis:
+    config:
+      all: True

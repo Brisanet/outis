@@ -8,10 +8,10 @@ type IOutis interface {
 	Go(fn func() error)
 	Wait() error
 
-	Init(ctx *Context) error
-	Before(ctx *Context) error
-	After(ctx *Context) error
-	Event(ctx *Context, event Event)
+	Init(ctx Context) error
+	Before(ctx Context) error
+	After(ctx Context) error
+	Event(ctx Context, event Event)
 }
 
 // ILogger methods for logging messages.
