@@ -12,10 +12,36 @@ type period struct {
 }
 
 // Context defines the data structure of the routine context.
-type Context struct {
-	ID        ID
-	RoutineID ID
-	Name      string
+type Context interface {
+	Context() context.Context
+	Cancel()
+	Done() <-chan struct{}
+	Err() error
+	Copy(baseCtxIn ...context.Context) Context
+	GetLatency() float64
+	LogInfo(msg string, fields ...LogFields)
+	LogError(err error, fields ...LogFields)
+	LogErrorMsg(msg string, fields ...LogFields)
+	LogFatal(msg string, fields ...LogFields)
+	LogPanic(msg string, fields ...LogFields)
+	LogDebug(msg string, fields ...LogFields)
+	LogWarn(msg string, fields ...LogFields)
+	AddSingleMetadata(key string, args interface{}) Context
+	AddMetadata(metadata Metadata) Context
+	// metrics(watch *Watch, now time.Time)
+	// sleep(now time.Time)
+	// mustWait(time int, start, end uint) bool
+	// validate() error
+
+	Name() string
+	RoutineID() ID
+	ID() ID
+}
+
+type ContextImpl struct {
+	id        ID
+	routineID ID
+	name      string
 	Desc      string
 	period    period
 	Interval  time.Duration
@@ -24,7 +50,7 @@ type Context struct {
 	Watcher   Watch
 
 	// Reminder: If new fields are added, change context.Copy function accordingly.
-	script              func(*Context) error
+	script              func(Context) error
 	metadata            Metadata
 	latency             time.Duration
 	notUseLoop          bool
@@ -37,27 +63,32 @@ type Context struct {
 }
 
 // Context retorna o context.Context.
-func (ctx *Context) Context() context.Context {
+func (ctx *ContextImpl) Context() context.Context {
 	return ctx.context
 }
 
 // Cancel cancela o contexto.
-func (ctx *Context) Cancel() {
+func (ctx *ContextImpl) Cancel() {
 	ctx.contextCancelFunc()
 }
 
 // Done retorna um canal que espera o canal ser finalizado.
-func (ctx *Context) Done() <-chan struct{} {
+func (ctx *ContextImpl) Done() <-chan struct{} {
 	return ctx.context.Done()
 }
 
 // Err retorna o erro no contexto.
-func (ctx *Context) Err() error {
+func (ctx *ContextImpl) Err() error {
 	return ctx.context.Err() //nolint:wrapcheck
 }
 
 // Copy cria um cópia do contexto atual.
-func (ctx *Context) Copy(baseCtxIn ...context.Context) *Context {
+func (ctx *ContextImpl) Copy(baseCtxIn ...context.Context) Context {
+	return ctx.copy(baseCtxIn...)
+}
+
+// Copy cria um cópia do contexto atual.
+func (ctx *ContextImpl) copy(baseCtxIn ...context.Context) *ContextImpl {
 	baseCtx := ctx.context
 
 	if len(baseCtxIn) > 0 {
@@ -66,10 +97,10 @@ func (ctx *Context) Copy(baseCtxIn ...context.Context) *Context {
 
 	childContext, childContextCancelFunc := context.WithCancel(baseCtx)
 
-	return &Context{
-		ID:                  ctx.ID,
-		RoutineID:           ctx.RoutineID,
-		Name:                ctx.Name,
+	return &ContextImpl{
+		id:                  ctx.id,
+		routineID:           ctx.routineID,
+		name:                ctx.name,
 		Desc:                ctx.Desc,
 		period:              ctx.period,
 		Interval:            ctx.Interval,
@@ -90,48 +121,48 @@ func (ctx *Context) Copy(baseCtxIn ...context.Context) *Context {
 }
 
 // GetLatency get script execution latency (in seconds).
-func (ctx *Context) GetLatency() float64 {
+func (ctx *ContextImpl) GetLatency() float64 {
 	return ctx.latency.Seconds()
 }
 
 // LogInfo executa a função Info do log do contexto.
-func (ctx *Context) LogInfo(msg string, fields ...LogFields) {
+func (ctx *ContextImpl) LogInfo(msg string, fields ...LogFields) {
 	ctx.log.Info(msg, fields...)
 }
 
 // LogError executa a função Error do log do contexto.
-func (ctx *Context) LogError(err error, fields ...LogFields) {
+func (ctx *ContextImpl) LogError(err error, fields ...LogFields) {
 	ctx.log.Error(err, fields...)
 }
 
 // LogErrorMsg executa a função ErrorMsg do log do contexto com uma mensagem de erro.
-func (ctx *Context) LogErrorMsg(msg string, fields ...LogFields) {
+func (ctx *ContextImpl) LogErrorMsg(msg string, fields ...LogFields) {
 	ctx.log.ErrorMsg(msg, fields...)
 }
 
 // LogFatal executa a função Fatal do log do contexto.
-func (ctx *Context) LogFatal(msg string, fields ...LogFields) {
+func (ctx *ContextImpl) LogFatal(msg string, fields ...LogFields) {
 	ctx.log.Fatal(msg, fields...)
 }
 
 // LogPanic executa a função Panic do log do contexto.
-func (ctx *Context) LogPanic(msg string, fields ...LogFields) {
+func (ctx *ContextImpl) LogPanic(msg string, fields ...LogFields) {
 	ctx.log.Panic(msg, fields...)
 }
 
 // LogDebug executa a função Debug do log do contexto.
-func (ctx *Context) LogDebug(msg string, fields ...LogFields) {
+func (ctx *ContextImpl) LogDebug(msg string, fields ...LogFields) {
 	ctx.log.Debug(msg, fields...)
 }
 
 // LogWarn executa a função Warn do log do contexto.
-func (ctx *Context) LogWarn(msg string, fields ...LogFields) {
+func (ctx *ContextImpl) LogWarn(msg string, fields ...LogFields) {
 	ctx.log.Warn(msg, fields...)
 }
 
 // AddSingleMetadata método adiciona 1 metadata no contexto.
-func (ctx *Context) AddSingleMetadata(key string, args interface{}) *Context {
-	copyCtx := ctx.Copy()
+func (ctx *ContextImpl) AddSingleMetadata(key string, args interface{}) Context {
+	copyCtx := ctx.copy()
 	copyCtx.metadata.Set(key, args)
 	copyCtx.log = copyCtx.log.AddField(key, args)
 
@@ -139,8 +170,8 @@ func (ctx *Context) AddSingleMetadata(key string, args interface{}) *Context {
 }
 
 // AddMetadata método adiciona metadata no contexto.
-func (ctx *Context) AddMetadata(metadata Metadata) *Context {
-	copyCtx := ctx.Copy()
+func (ctx *ContextImpl) AddMetadata(metadata Metadata) Context {
+	copyCtx := ctx.copy()
 
 	for key, value := range metadata {
 		copyCtx.metadata.Set(key, value)
@@ -150,9 +181,9 @@ func (ctx *Context) AddMetadata(metadata Metadata) *Context {
 	return copyCtx
 }
 
-func (ctx *Context) metrics(watch *Watch, now time.Time) {
+func (ctx *ContextImpl) metrics(watch *Watch, now time.Time) {
 	watch.outis.Event(ctx, EventMetric{
-		ID:         ctx.ID.ToString(),
+		ID:         ctx.id.ToString(),
 		StartedAt:  now,
 		FinishedAt: time.Now(),
 		Latency:    time.Since(now),
@@ -165,8 +196,8 @@ func (ctx *Context) metrics(watch *Watch, now time.Time) {
 			RunAt: watch.RunAt,
 		},
 		Routine: RoutineMetric{
-			ID:        ctx.RoutineID.ToString(),
-			Name:      ctx.Name,
+			ID:        ctx.routineID.ToString(),
+			Name:      ctx.name,
 			Path:      ctx.Path,
 			StartedAt: ctx.RunAt,
 		},
@@ -175,7 +206,7 @@ func (ctx *Context) metrics(watch *Watch, now time.Time) {
 	ctx.metadata, ctx.indicator, ctx.histogram = Metadata{}, []*Indicator{}, []*Histogram{}
 }
 
-func (ctx *Context) sleep(now time.Time) {
+func (ctx *ContextImpl) sleep(now time.Time) {
 	if ctx.mustWait(now.Hour(), ctx.period.startHour, ctx.period.endHour) {
 		time.Sleep(time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+int(ctx.period.startHour),
 			0, 0, 0, now.Location()).Sub(now))
@@ -187,7 +218,7 @@ func (ctx *Context) sleep(now time.Time) {
 	}
 }
 
-func (ctx *Context) mustWait(time int, start, end uint) bool {
+func (ctx *ContextImpl) mustWait(time int, start, end uint) bool {
 	if start == 0 && end == 0 {
 		return false
 	}
@@ -199,12 +230,12 @@ func (ctx *Context) mustWait(time int, start, end uint) bool {
 	return !(time >= int(start) || time <= int(end))
 }
 
-func (ctx *Context) validate() error {
-	if ctx.RoutineID == "" {
+func (ctx *ContextImpl) validate() error {
+	if ctx.routineID == "" {
 		return errors.New("the routine id is required")
 	}
 
-	if ctx.Name == "" {
+	if ctx.name == "" {
 		return errors.New("the routine name is required")
 	}
 
@@ -213,4 +244,16 @@ func (ctx *Context) validate() error {
 	}
 
 	return nil
+}
+
+func (ctx *ContextImpl) Name() string {
+	return ctx.name
+}
+
+func (ctx *ContextImpl) RoutineID() ID {
+	return ctx.routineID
+}
+
+func (ctx *ContextImpl) ID() ID {
+	return ctx.id
 }
