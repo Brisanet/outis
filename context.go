@@ -177,26 +177,28 @@ func (ctx *Context) metrics(watch *Watch, now time.Time) {
 
 func (ctx *Context) sleep(now time.Time) {
 	if ctx.mustWait(now.Hour(), ctx.period.startHour, ctx.period.endHour) {
-		time.Sleep(time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+int(ctx.period.startHour),
-			0, 0, 0, now.Location()).Sub(now))
+		time.Sleep(ctx.nextTime(now, int(ctx.period.startHour), 0).Sub(now))
 	}
 
 	if ctx.mustWait(now.Minute(), ctx.period.startMinute, ctx.period.endMinute) {
-		time.Sleep(time.Date(now.Year(), now.Month(), now.Day(), now.Hour()+int(ctx.period.startHour),
-			now.Minute()+int(ctx.period.startMinute), 0, 0, now.Location()).Sub(now))
+		time.Sleep(ctx.nextTime(now, int(ctx.period.startHour), int(ctx.period.startMinute)).Sub(now))
 	}
 }
 
 func (ctx *Context) mustWait(time int, start, end uint) bool {
-	if start == 0 && end == 0 {
-		return false
-	}
-
 	if start <= end {
 		return !(time >= int(start) && time <= int(end))
 	}
 
 	return !(time >= int(start) || time <= int(end))
+}
+
+func (ctx *Context) nextTime(now time.Time, hour, minute int) time.Time {
+	today := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, 0, 0, now.Location())
+	if now.Before(today) {
+		return today
+	}
+	return today.Add(24 * time.Hour)
 }
 
 func (ctx *Context) validate() error {
