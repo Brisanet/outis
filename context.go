@@ -7,7 +7,9 @@ import (
 )
 
 type period struct {
+	hourSet                bool
 	startHour, endHour     uint
+	minuteSet              bool
 	startMinute, endMinute uint
 }
 
@@ -176,12 +178,16 @@ func (ctx *Context) metrics(watch *Watch, now time.Time) {
 }
 
 func (ctx *Context) sleep(now time.Time) {
-	if ctx.mustWait(now.Hour(), ctx.period.startHour, ctx.period.endHour) {
-		time.Sleep(ctx.nextTime(now, int(ctx.period.startHour), 0).Sub(now))
+	if ctx.period.hourSet {
+		if ctx.mustWait(now.Hour(), ctx.period.startHour, ctx.period.endHour) {
+			time.Sleep(ctx.nextTime(now, int(ctx.period.startHour), 0).Sub(now))
+		}
 	}
 
-	if ctx.mustWait(now.Minute(), ctx.period.startMinute, ctx.period.endMinute) {
-		time.Sleep(ctx.nextTime(now, int(ctx.period.startHour), int(ctx.period.startMinute)).Sub(now))
+	if ctx.period.minuteSet {
+		if ctx.mustWait(now.Minute(), ctx.period.startMinute, ctx.period.endMinute) {
+			time.Sleep(ctx.nextTime(now, int(ctx.period.startHour), int(ctx.period.startMinute)).Sub(now))
+		}
 	}
 }
 
