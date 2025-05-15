@@ -36,6 +36,7 @@ type Context interface {
 	ID() ID
 }
 
+// ContextImpl implements context interface
 type ContextImpl struct {
 	id        ID
 	routineID ID
@@ -250,17 +251,17 @@ func (ctx *ContextImpl) validate() error {
 	return nil
 }
 
-// Name retorna o nome do script
+// Name returns the name of the routine
 func (ctx *ContextImpl) Name() string {
 	return ctx.name
 }
 
-// RoutineID retorna o id do da rotina
+// RoutineID returns the ID of the routine
 func (ctx *ContextImpl) RoutineID() ID {
 	return ctx.routineID
 }
 
-// ID retorna o id da execução
+// ID returns the execution ID of the routine
 func (ctx *ContextImpl) ID() ID {
 	return ctx.id
 }
