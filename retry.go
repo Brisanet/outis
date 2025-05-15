@@ -4,7 +4,7 @@ package outis
 type retry struct{ amount, retries int8 }
 
 // Go returns the settings for using the Attempt method
-func (ctx *Context) Retry(retries int8) *retry {
+func (ctx *ContextImpl) Retry(retries int8) *retry {
 	return &retry{retries: retries}
 }
 

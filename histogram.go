@@ -13,7 +13,7 @@ type histogramValue struct {
 }
 
 // NewHistogram creates a new histogram.
-func (ctx *Context) NewHistogram(key string) *Histogram {
+func (ctx *ContextImpl) NewHistogram(key string) *Histogram {
 	histogram := &Histogram{key: key, values: make([]histogramValue, 0)}
 	ctx.histogram = append(ctx.histogram, histogram)
 	return histogram

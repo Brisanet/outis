@@ -40,7 +40,7 @@ func main() {
 		// outis.WithNotUseLoop(),
 
 		// Aqui é passada a função do script que será executada
-		outis.WithScript(func(ctx *outis.Context) error {
+		outis.WithScript(func(ctx outis.Context) error {
 			ctx.LogInfo("this is an information message")
 			ctx.LogError(errors.New("this is an error message"))
 
