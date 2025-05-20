@@ -30,11 +30,11 @@ func main() {
 		outis.WithDesc("Here is the description of my routine"),
 
 		// Executará a cada 10 segundos
-		outis.WithInterval(time.Second),
+		outis.WithInterval(time.Second*2),
 
 		// Executará de 12pm a 4pm.
 		// por padrão, não há restrições de tempo.
-		// outis.WithHours(12, 16),
+		// outis.WithMinutes(23, 23),
 
 		// Executará somente uma vez
 		// outis.WithNotUseLoop(),

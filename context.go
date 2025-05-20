@@ -26,16 +26,16 @@ type Context struct {
 	Watcher   Watch
 
 	// Reminder: If new fields are added, change context.Copy function accordingly.
-	script              func(*Context) error
-	metadata            Metadata
-	latency             time.Duration
-	notUseLoop          bool
-	executeFirstTimeNow bool
-	histogram           []*Histogram
-	indicator           []*Indicator
-	log                 ILogger
-	context             context.Context //nolint:containedctx
-	contextCancelFunc   context.CancelFunc
+	script                         func(*Context) error
+	metadata                       Metadata
+	latency                        time.Duration
+	notUseLoop                     bool
+	executeFirstTimeBeforeInterval bool
+	histogram                      []*Histogram
+	indicator                      []*Indicator
+	log                            ILogger
+	context                        context.Context //nolint:containedctx
+	contextCancelFunc              context.CancelFunc
 }
 
 // Context retorna o context.Context.
@@ -69,25 +69,25 @@ func (ctx *Context) Copy(baseCtxIn ...context.Context) *Context {
 	childContext, childContextCancelFunc := context.WithCancel(baseCtx)
 
 	return &Context{
-		ID:                  ctx.ID,
-		RoutineID:           ctx.RoutineID,
-		Name:                ctx.Name,
-		Desc:                ctx.Desc,
-		period:              ctx.period,
-		Interval:            ctx.Interval,
-		Path:                ctx.Path,
-		RunAt:               ctx.RunAt,
-		Watcher:             ctx.Watcher,
-		script:              ctx.script,
-		metadata:            ctx.metadata,
-		latency:             ctx.latency,
-		notUseLoop:          ctx.notUseLoop,
-		executeFirstTimeNow: ctx.executeFirstTimeNow,
-		histogram:           make([]*Histogram, 0),
-		indicator:           make([]*Indicator, 0),
-		log:                 ctx.log,
-		context:             childContext,
-		contextCancelFunc:   childContextCancelFunc,
+		ID:                             ctx.ID,
+		RoutineID:                      ctx.RoutineID,
+		Name:                           ctx.Name,
+		Desc:                           ctx.Desc,
+		period:                         ctx.period,
+		Interval:                       ctx.Interval,
+		Path:                           ctx.Path,
+		RunAt:                          ctx.RunAt,
+		Watcher:                        ctx.Watcher,
+		script:                         ctx.script,
+		metadata:                       ctx.metadata,
+		latency:                        ctx.latency,
+		notUseLoop:                     ctx.notUseLoop,
+		executeFirstTimeBeforeInterval: ctx.executeFirstTimeBeforeInterval,
+		histogram:                      make([]*Histogram, 0),
+		indicator:                      make([]*Indicator, 0),
+		log:                            ctx.log,
+		context:                        childContext,
+		contextCancelFunc:              childContextCancelFunc,
 	}
 }
 
@@ -178,15 +178,18 @@ func (ctx *Context) metrics(watch *Watch, now time.Time) {
 }
 
 func (ctx *Context) sleep(now time.Time) {
+	startHour := now.Hour()
+
 	if ctx.period.hourSet {
+		startHour = int(ctx.period.startHour)
 		if ctx.mustWait(now.Hour(), ctx.period.startHour, ctx.period.endHour) {
-			time.Sleep(ctx.nextTime(now, int(ctx.period.startHour), 0).Sub(now))
+			time.Sleep(ctx.nextTime(now, startHour, 0).Sub(now))
 		}
 	}
 
 	if ctx.period.minuteSet {
 		if ctx.mustWait(now.Minute(), ctx.period.startMinute, ctx.period.endMinute) {
-			time.Sleep(ctx.nextTime(now, int(ctx.period.startHour), int(ctx.period.startMinute)).Sub(now))
+			time.Sleep(ctx.nextTime(now, startHour, int(ctx.period.startMinute)).Sub(now))
 		}
 	}
 }

@@ -51,7 +51,7 @@ func WithNotUseLoop() Option {
 
 // WithExecuteFirstTimeNow define that the routine will execute first time when Watcher.Go is called
 func WithExecuteFirstTimeNow() Option {
-	return func(ctx *Context) { ctx.executeFirstTimeNow = true }
+	return func(ctx *Context) { ctx.executeFirstTimeBeforeInterval = true }
 }
 
 // WatcherOption defines the option type of a watcher
