@@ -124,11 +124,11 @@ func (watch *Watch) Go(opts ...Option) {
 			}
 		}
 
+		ticker := time.NewTicker(ctx.Interval)
 		for {
 			ctx.sleep(time.Now())
 
-			ticker := time.NewTicker(ctx.Interval)
-
+			ticker.Reset(ctx.Interval)
 			select {
 			// Espera o contexto ser finalizado
 			case <-ctx.context.Done():
