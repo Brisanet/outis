@@ -9,7 +9,7 @@ type Indicator struct {
 }
 
 // NewIndicator creates a new indicator.
-func (ctx *Context) NewIndicator(key string) *Indicator {
+func (ctx *ContextImpl) NewIndicator(key string) *Indicator {
 	indicator := &Indicator{key: key, value: 0, createdAt: time.Now()}
 	ctx.indicator = append(ctx.indicator, indicator)
 	return indicator

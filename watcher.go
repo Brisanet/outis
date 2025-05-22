@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"os/signal"
 	"reflect"
 	"runtime"
+	"strconv"
 	"syscall"
 	"time"
 )
@@ -76,7 +78,8 @@ func (watch *Watch) Go(opts ...Option) {
 	watch.outis.Go(func() error {
 		var (
 			childContext, childContextCancelFunc = context.WithCancel(context.Background())
-			ctx                                  = &Context{
+			ctx                                  = &ContextImpl{
+				id:                ID(strconv.FormatInt(rand.Int63(), 10)),
 				indicator:         make([]*Indicator, 0),
 				metadata:          make(Metadata),
 				log:               watch.log,
@@ -156,7 +159,7 @@ func (watch *Watch) Go(opts ...Option) {
 	})
 }
 
-func (ctx *Context) execute() error {
+func (ctx *ContextImpl) execute() error {
 	initialTime := time.Now()
 	defer func() {
 		if r := recover(); r != nil {
