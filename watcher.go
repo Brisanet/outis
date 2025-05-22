@@ -114,26 +114,31 @@ func (watch *Watch) Go(opts ...Option) {
 			}
 		}()
 
+		// TODO: refactor the execution logic below when add test
+		ctx.sleep(time.Now())
+
 		if ctx.notUseLoop {
 			return ctx.execute()
 		}
 
-		if ctx.executeFirstTimeNow {
+		if ctx.executeFirstTimeBeforeInterval {
 			if err = ctx.execute(); err != nil {
 				ctx.log.Error(err)
 			}
 		}
 
 		ticker := time.NewTicker(ctx.Interval)
-		defer ticker.Stop()
-
 		for {
+			ctx.sleep(time.Now())
+
+			ticker.Reset(ctx.Interval)
 			select {
 			// Espera o contexto ser finalizado
 			case <-ctx.context.Done():
 				return ctx.context.Err()
 			// Espera a próxima execução com base no ticker
 			case _, isOpen := <-ticker.C:
+				ticker.Stop()
 				if !isOpen {
 					return nil
 				}
@@ -155,8 +160,7 @@ func (watch *Watch) Go(opts ...Option) {
 }
 
 func (ctx *ContextImpl) execute() error {
-	now := time.Now()
-	ctx.sleep(now)
+	initialTime := time.Now()
 	defer func() {
 		if r := recover(); r != nil {
 			ctx.log.Panic(fmt.Sprintf("%v", r))
@@ -171,12 +175,12 @@ func (ctx *ContextImpl) execute() error {
 		return err
 	}
 
-	ctx.latency = time.Since(now)
+	ctx.latency = time.Since(initialTime)
 	if err := ctx.Watcher.outis.After(ctx); err != nil {
 		return err
 	}
 
-	ctx.metrics(&ctx.Watcher, now)
+	ctx.metrics(&ctx.Watcher, initialTime)
 
 	return nil
 }
