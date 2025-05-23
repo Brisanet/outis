@@ -211,13 +211,17 @@ func (ctx *ContextImpl) sleep(now time.Time) {
 	if ctx.period.hourSet {
 		startHour = int(ctx.period.startHour)
 		if ctx.mustWait(now.Hour(), ctx.period.startHour, ctx.period.endHour) {
-			time.Sleep(ctx.nextTime(now, startHour, 0).Sub(now))
+			nextTime := ctx.nextTime(now, startHour, 0)
+			ctx.LogInfo("Waiting until " + nextTime.Format("02/01/2006 15:04:05"))
+			time.Sleep(nextTime.Sub(now))
 		}
 	}
 
 	if ctx.period.minuteSet {
 		if ctx.mustWait(now.Minute(), ctx.period.startMinute, ctx.period.endMinute) {
-			time.Sleep(ctx.nextTime(now, startHour, int(ctx.period.startMinute)).Sub(now))
+			nextTime := ctx.nextTime(now, startHour, int(ctx.period.startMinute))
+			ctx.LogInfo("Waiting until " + nextTime.Format("02/01/2006 15:04:05"))
+			time.Sleep(nextTime.Sub(now))
 		}
 	}
 }
