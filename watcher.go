@@ -79,11 +79,11 @@ func (watch *Watch) Go(opts ...Option) {
 		var (
 			childContext, childContextCancelFunc = context.WithCancel(context.Background())
 			ctx                                  = &ContextImpl{
-				id:                ID(strconv.FormatInt(rand.Int63(), 10)),
-				indicator:         make([]*Indicator, 0),
-				metadata:          make(Metadata),
-				log:               watch.log,
-				Interval:          time.Minute,
+				id:        ID(strconv.FormatInt(rand.Int63(), 10)),
+				indicator: make([]*Indicator, 0),
+				metadata:  make(Metadata),
+				log:       watch.log,
+				// Interval:          time.Minute,
 				RunAt:             time.Now(),
 				Watcher:           *watch,
 				context:           childContext,
@@ -100,6 +100,10 @@ func (watch *Watch) Go(opts ...Option) {
 			return err
 		}
 
+		if ctx.Interval != nil {
+			ctx.Interval.logger = ctx.log
+		}
+
 		info := runtime.FuncForPC(reflect.ValueOf(ctx.script).Pointer())
 		file, line := info.FileLine(info.Entry())
 		ctx.Path = fmt.Sprintf("%s:%v", file, line)
@@ -114,31 +118,20 @@ func (watch *Watch) Go(opts ...Option) {
 			}
 		}()
 
-		// TODO: refactor the execution logic below when add test
-		ctx.sleep(time.Now())
+		var (
+			isFirstExecution = true
+			executeChan      = make(chan struct{})
+		)
 
-		if ctx.notUseLoop {
-			return ctx.execute()
-		}
-
-		if ctx.executeFirstTimeBeforeInterval {
-			if err = ctx.execute(); err != nil {
-				ctx.log.Error(err)
-			}
-		}
-
-		ticker := time.NewTicker(ctx.Interval)
 		for {
-			ctx.sleep(time.Now())
+			go ctx.WaitNextExecution(isFirstExecution, executeChan)
 
-			ticker.Reset(ctx.Interval)
 			select {
 			// Espera o contexto ser finalizado
 			case <-ctx.context.Done():
 				return ctx.context.Err()
 			// Espera a próxima execução com base no ticker
-			case _, isOpen := <-ticker.C:
-				ticker.Stop()
+			case _, isOpen := <-executeChan:
 				if !isOpen {
 					return nil
 				}
@@ -150,10 +143,17 @@ func (watch *Watch) Go(opts ...Option) {
 					return err
 				}
 
+				isFirstExecution = false
 				if err = ctx.execute(); err != nil {
 					ctx.log.Error(err)
+				}
+
+				if ctx.Interval != nil {
 					continue
 				}
+
+				close(executeChan)
+				return nil
 			}
 		}
 	})

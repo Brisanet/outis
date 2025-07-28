@@ -1,7 +1,5 @@
 package outis
 
-import "time"
-
 // Option defines the option type of a routine
 type Option func(*ContextImpl)
 
@@ -25,23 +23,9 @@ func WithScript(fn func(Context) error) Option {
 	return func(ctx *ContextImpl) { ctx.script = fn }
 }
 
-// WithHours sets the start and end time of script execution
-func WithHours(start, end uint) Option {
-	return func(ctx *ContextImpl) {
-		ctx.period.hourSet, ctx.period.startHour, ctx.period.endHour = true, start, end
-	}
-}
-
-// WithMinutes sets the start and end minutes of script execution
-func WithMinutes(start, end uint) Option {
-	return func(ctx *ContextImpl) {
-		ctx.period.minuteSet, ctx.period.startMinute, ctx.period.endMinute = true, start, end
-	}
-}
-
 // WithInterval defines the interval at which the script will be executed
-func WithInterval(duration time.Duration) Option {
-	return func(ctx *ContextImpl) { ctx.Interval = duration }
+func WithInterval(interval Interval) Option {
+	return func(ctx *ContextImpl) { ctx.Interval = &interval }
 }
 
 // WithNotUseLoop define that the routine will not enter a loop

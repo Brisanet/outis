@@ -43,7 +43,7 @@ type ContextImpl struct {
 	name      string
 	Desc      string
 	period    period
-	Interval  time.Duration
+	Interval  *Interval
 	Path      string
 	RunAt     time.Time
 	Watcher   Watch
@@ -205,43 +205,6 @@ func (ctx *ContextImpl) metrics(watch *Watch, now time.Time) {
 	ctx.metadata, ctx.indicator, ctx.histogram = Metadata{}, []*Indicator{}, []*Histogram{}
 }
 
-func (ctx *ContextImpl) sleep(now time.Time) {
-	startHour := now.Hour()
-
-	if ctx.period.hourSet {
-		startHour = int(ctx.period.startHour)
-		if ctx.mustWait(now.Hour(), ctx.period.startHour, ctx.period.endHour) {
-			nextTime := ctx.nextTime(now, startHour, 0)
-			ctx.LogInfo("Waiting until " + nextTime.Format("02/01/2006 15:04:05"))
-			time.Sleep(nextTime.Sub(now))
-		}
-	}
-
-	if ctx.period.minuteSet {
-		if ctx.mustWait(now.Minute(), ctx.period.startMinute, ctx.period.endMinute) {
-			nextTime := ctx.nextTime(now, startHour, int(ctx.period.startMinute))
-			ctx.LogInfo("Waiting until " + nextTime.Format("02/01/2006 15:04:05"))
-			time.Sleep(nextTime.Sub(now))
-		}
-	}
-}
-
-func (ctx *ContextImpl) mustWait(time int, start, end uint) bool {
-	if start <= end {
-		return !(time >= int(start) && time <= int(end))
-	}
-
-	return !(time >= int(start) || time <= int(end))
-}
-
-func (ctx *ContextImpl) nextTime(now time.Time, hour, minute int) time.Time {
-	today := time.Date(now.Year(), now.Month(), now.Day(), hour, minute, 0, 0, now.Location())
-	if now.Before(today) {
-		return today
-	}
-	return today.Add(24 * time.Hour)
-}
-
 func (ctx *ContextImpl) validate() error {
 	if ctx.RoutineID() == "" {
 		return errors.New("the routine id is required")
@@ -253,6 +216,10 @@ func (ctx *ContextImpl) validate() error {
 
 	if ctx.script == nil {
 		return errors.New("the routine is required")
+	}
+
+	if err := ctx.Interval.validate(); err != nil {
+		return err
 	}
 
 	return nil
@@ -271,4 +238,11 @@ func (ctx *ContextImpl) RoutineID() ID {
 // ID returns the execution ID of the routine
 func (ctx *ContextImpl) ID() ID {
 	return ctx.id
+}
+
+func (ctx *ContextImpl) WaitNextExecution(isFirstScriptExecution bool, executeChan chan struct{}) {
+	if ctx.Interval != nil {
+		ctx.Interval.Wait(context.Background(), time.Now(), isFirstScriptExecution)
+	}
+	executeChan <- struct{}{}
 }

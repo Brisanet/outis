@@ -1,9 +1,6 @@
 package main
 
 import (
-	"errors"
-	"time"
-
 	"github.com/Brisanet/outis"
 )
 
@@ -23,35 +20,18 @@ func main() {
 	)
 
 	watch.Go(
-		// Identificador de rotina para executar controle de concorrência
 		outis.WithID("422138b3-c721-4021-97ab-8cf7e174fb4f"),
-
-		outis.WithName("Here is the name of my routine"),
-		outis.WithDesc("Here is the description of my routine"),
-
-		// Executará a cada 10 segundos
-		outis.WithInterval(time.Second*2),
-
-		// Executará de 12pm a 4pm.
-		// por padrão, não há restrições de tempo.
-		// outis.WithMinutes(23, 23),
-
-		// Executará somente uma vez
-		// outis.WithNotUseLoop(),
-
-		// Aqui é passada a função do script que será executada
+		outis.WithInterval(
+			outis.NewInterval(
+				outis.WithHours(18, 19),
+				outis.WithMinutes(0, 10),
+				// outis.WithEvery(time.Second*10),
+			),
+		),
+		outis.WithName("-PlanUpdater"),
+		outis.WithDesc("Atualiza planos com data de validade expiradas, tornando a venda nao visivel."),
 		outis.WithScript(func(ctx outis.Context) error {
 			ctx.LogInfo("this is an information message")
-			ctx.LogError(errors.New("this is an error message"))
-
-			ctx = ctx.AddSingleMetadata("client_ids", []int64{234234})
-			ctx = ctx.AddMetadata(outis.Metadata{"notification": outis.Metadata{
-				"client_id": 234234,
-				"message":   "Hi, we are notifying you.",
-				"fcm":       "231223",
-			}})
-
-			ctx.LogDebug("this is an debug message with metadata")
 
 			return nil
 		}),
