@@ -217,8 +217,8 @@ func (ctx *ContextImpl) sleep(now time.Time) {
 			ctx.LogInfo("Waiting until " + nextTime.Format("02/01/2006 15:04:05"))
 			sleepTime = nextTime.Sub(now)
 		}
-		time.Sleep(sleepTime)
 		ctx.LogDebug("Waiting debug hour", LogFields{"now": now.String(), "hour": now.Hour(), "start_hour": ctx.period.startHour, "next_time": nextTime.String(), "sleep_time": sleepTime.String()})
+		time.Sleep(sleepTime)
 	}
 
 	if ctx.period.minuteSet {
@@ -228,8 +228,8 @@ func (ctx *ContextImpl) sleep(now time.Time) {
 			ctx.LogInfo("Waiting until " + nextTime.Format("02/01/2006 15:04:05"))
 			sleepTime = nextTime.Sub(now)
 		}
-		time.Sleep(sleepTime)
 		ctx.LogDebug("Waiting debug minute", LogFields{"now": now.String(), "minute": now.Minute(), "start_hour": startHour, "start_minute": ctx.period.startMinute, "next_time": nextTime.String(), "sleep_time": sleepTime.String()})
+		time.Sleep(sleepTime)
 	}
 }
 
