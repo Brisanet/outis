@@ -115,13 +115,14 @@ func (watch *Watch) Go(opts ...Option) {
 		}()
 
 		// TODO: refactor the execution logic below when add test
-		ctx.sleep(time.Now())
 
 		if ctx.notUseLoop {
+			ctx.sleep(time.Now())
 			return ctx.execute()
 		}
 
 		if ctx.executeFirstTimeBeforeInterval {
+			ctx.sleep(time.Now())
 			if err = ctx.execute(); err != nil {
 				ctx.log.Error(err)
 			}
@@ -131,6 +132,7 @@ func (watch *Watch) Go(opts ...Option) {
 		for {
 			ctx.sleep(time.Now())
 
+			ctx.log.Info("Starting ticker " + ctx.Interval.String())
 			ticker.Reset(ctx.Interval)
 			select {
 			// Espera o contexto ser finalizado

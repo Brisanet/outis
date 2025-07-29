@@ -207,22 +207,29 @@ func (ctx *ContextImpl) metrics(watch *Watch, now time.Time) {
 
 func (ctx *ContextImpl) sleep(now time.Time) {
 	startHour := now.Hour()
+	var nextTime time.Time
 
 	if ctx.period.hourSet {
 		startHour = int(ctx.period.startHour)
+		var sleepTime time.Duration
 		if ctx.mustWait(now.Hour(), ctx.period.startHour, ctx.period.endHour) {
-			nextTime := ctx.nextTime(now, startHour, 0)
+			nextTime = ctx.nextTime(now, startHour, 0)
 			ctx.LogInfo("Waiting until " + nextTime.Format("02/01/2006 15:04:05"))
-			time.Sleep(nextTime.Sub(now))
+			sleepTime = nextTime.Sub(now)
 		}
+		time.Sleep(sleepTime)
+		ctx.LogDebug("Waiting debug hour", LogFields{"now": now.String(), "hour": now.Hour(), "start_hour": ctx.period.startHour, "next_time": nextTime.String(), "sleep_time": sleepTime.String()})
 	}
 
 	if ctx.period.minuteSet {
+		var sleepTime time.Duration
 		if ctx.mustWait(now.Minute(), ctx.period.startMinute, ctx.period.endMinute) {
-			nextTime := ctx.nextTime(now, startHour, int(ctx.period.startMinute))
+			nextTime = ctx.nextTime(now, startHour, int(ctx.period.startMinute))
 			ctx.LogInfo("Waiting until " + nextTime.Format("02/01/2006 15:04:05"))
-			time.Sleep(nextTime.Sub(now))
+			sleepTime = nextTime.Sub(now)
 		}
+		time.Sleep(sleepTime)
+		ctx.LogDebug("Waiting debug minute", LogFields{"now": now.String(), "minute": now.Minute(), "start_hour": startHour, "start_minute": ctx.period.startMinute, "next_time": nextTime.String(), "sleep_time": sleepTime.String()})
 	}
 }
 
