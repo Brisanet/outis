@@ -219,6 +219,7 @@ func (ctx *ContextImpl) sleep(now time.Time) {
 		}
 		ctx.LogDebug("Waiting debug hour", LogFields{"now": now.String(), "hour": now.Hour(), "start_hour": ctx.period.startHour, "next_time": nextTime.String(), "sleep_time": sleepTime.String()})
 		time.Sleep(sleepTime)
+		now = time.Now()
 	}
 
 	if ctx.period.minuteSet {
