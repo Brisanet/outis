@@ -2,6 +2,7 @@ package outis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -101,8 +102,9 @@ func (watch *Watch) Go(opts ...Option) {
 		}
 
 		if ctx.Interval != nil {
-			ctx.Interval.logger = ctx.log
+			return errors.New("empty interval")
 		}
+		ctx.Interval.logger = ctx.log
 
 		info := runtime.FuncForPC(reflect.ValueOf(ctx.script).Pointer())
 		file, line := info.FileLine(info.Entry())
@@ -119,12 +121,11 @@ func (watch *Watch) Go(opts ...Option) {
 		}()
 
 		var (
-			isFirstExecution = true
-			executeChan      = make(chan struct{})
+			executeChan = make(chan struct{})
 		)
 
 		for {
-			go ctx.WaitNextExecution(isFirstExecution, executeChan)
+			go ctx.WaitNextExecution(executeChan)
 
 			select {
 			// Espera o contexto ser finalizado
@@ -143,17 +144,9 @@ func (watch *Watch) Go(opts ...Option) {
 					return err
 				}
 
-				isFirstExecution = false
 				if err = ctx.execute(); err != nil {
 					ctx.log.Error(err)
 				}
-
-				if ctx.Interval != nil {
-					continue
-				}
-
-				close(executeChan)
-				return nil
 			}
 		}
 	})

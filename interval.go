@@ -2,6 +2,7 @@ package outis
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 )
@@ -16,13 +17,17 @@ type Interval struct {
 	onlyOnce               bool
 	executeFirstTimeNow    bool
 	logger                 ILogger
+
+	numExecutionsThisCycle int
 }
 
 func (i Interval) validate() (err error) {
-	// if !i.everySet || !i.onlyOnce {
-	// 	return errors.New("interval frequency is required")
-	// }
-	// todo: validar hora e minuto
+	if !i.everySet || !i.onlyOnce {
+		return errors.New("interval frequency is required")
+	}
+	if i.everySet && i.onlyOnce {
+		return errors.New("only one interval frequency is required")
+	}
 	return
 }
 
@@ -30,6 +35,7 @@ func NewInterval(opts ...IntervalOpts) (interval Interval) {
 	for _, opt := range opts {
 		opt(&interval)
 	}
+
 	return
 }
 
@@ -68,52 +74,42 @@ func WithOnlyOnce() IntervalOpts {
 	}
 }
 
-func (i Interval) mustWait(time int, start, end uint) bool {
-	if start <= end {
-		return !(time >= int(start) && time <= int(end))
-	}
-
-	return !(time >= int(start) || time <= int(end))
-}
-
-// func (i Interval) nextTime(now time.Time, hour, minute uint) time.Time {
-// 	today := time.Date(now.Year(), now.Month(), now.Day(), int(hour), int(minute), 0, 0, now.Location())
-// 	if now.Before(today) || now.Equal(today) {
-// 		return today
-// 	}
-// 	return today.Add(24 * time.Hour)
-// }
-
-func (i Interval) Wait(ctx context.Context, now time.Time, isFirstScriptExecution bool) {
-	if i.executeFirstTimeNow && isFirstScriptExecution {
+func (i *Interval) Wait(ctx context.Context, now time.Time) (execute bool, err error) {
+	if i.executeFirstTimeNow && i.numExecutionsThisCycle == 0 {
 		return
 	}
-	nextExecution, waitDuration := i.calculateNextExecutionTime(now, isFirstScriptExecution)
+
+	nextExecution, waitDuration, err := i.calculateNextExecutionTime(now)
+	if err != nil {
+		return execute, err
+	}
 	if waitDuration > 0 {
 		i.logger.Info(fmt.Sprintf("Waiting until next window at %s (in %s)", nextExecution.Format("02/01/2006 15:04:05"), waitDuration))
 	}
 
 	select {
 	case <-time.After(waitDuration):
+		i.numExecutionsThisCycle++
+		return true, nil
 	case <-ctx.Done():
+		return false, ctx.Err()
 	}
 }
 
-func (i Interval) calculateNextExecutionTime(now time.Time, isFirstScriptExecution bool) (time.Time, time.Duration) {
+func (i *Interval) calculateNextExecutionTime(now time.Time) (time.Time, time.Duration, error) {
 	var (
 		next              = now
 		forceNextInterval bool
 	)
-	if isFirstScriptExecution {
-		hourOK := !i.hourSet || !isOutsideWindow(uint(now.Hour()), i.startHour, i.endHour)
-		minuteOK := !i.minuteSet || !isOutsideWindow(uint(now.Minute()), i.startMinute, i.endMinute)
-		if hourOK && minuteOK {
-			return now, 0
+
+	if i.numExecutionsThisCycle > 0 {
+		if i.everySet {
+			next = now.Add(i.every)
+		} else if i.onlyOnce {
+			forceNextInterval = true
+		} else {
+			return time.Time{}, 0, errors.New("interval frequency is required")
 		}
-	} else if i.everySet {
-		next = now.Add(i.every)
-	} else {
-		forceNextInterval = true
 	}
 
 	if i.hourSet {
@@ -131,6 +127,7 @@ func (i Interval) calculateNextExecutionTime(now time.Time, isFirstScriptExecuti
 				nextMinute = int(i.startMinute)
 			}
 			next = time.Date(next.Year(), next.Month(), nextDay, nextHour, nextMinute, 0, 0, next.Location())
+			i.numExecutionsThisCycle = 0
 		}
 	}
 
@@ -144,16 +141,17 @@ func (i Interval) calculateNextExecutionTime(now time.Time, isFirstScriptExecuti
 				nextHour += 1
 			}
 			next = time.Date(next.Year(), next.Month(), next.Day(), nextHour, nextMinute, 0, 0, next.Location())
+			i.numExecutionsThisCycle = 0
 		}
 	}
 
 	waitDuration := next.Sub(now)
 	if waitDuration < 0 {
 		// TODO: add warning
-		return now, 0
+		return now, 0, nil
 	}
 
-	return next, waitDuration
+	return next, waitDuration, nil
 }
 
 // backup v.1

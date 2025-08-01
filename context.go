@@ -240,9 +240,15 @@ func (ctx *ContextImpl) ID() ID {
 	return ctx.id
 }
 
-func (ctx *ContextImpl) WaitNextExecution(isFirstScriptExecution bool, executeChan chan struct{}) {
-	if ctx.Interval != nil {
-		ctx.Interval.Wait(context.Background(), time.Now(), isFirstScriptExecution)
+func (ctx *ContextImpl) WaitNextExecution(executeChan chan struct{}) {
+	execute, err := ctx.Interval.Wait(context.Background(), time.Now())
+
+	if execute {
+		executeChan <- struct{}{}
+	} else {
+		if err != nil {
+			ctx.log.Error(err)
+		}
+		close(executeChan)
 	}
-	executeChan <- struct{}{}
 }
