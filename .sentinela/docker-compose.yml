@@ -1,0 +1,89 @@
+services:
+  loki:
+    image: grafana/loki:3.0.0
+    container_name: loki
+    user: "0:0"
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./loki/loki-config.yaml:/etc/loki/config.yaml
+      - loki_data:/loki
+    networks:
+      - observability
+
+  tempo:
+    image: grafana/tempo:2.6.0
+    container_name: tempo
+    user: "0:0"
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    volumes:
+      - ./tempo/tempo-config.yaml:/etc/tempo/config.yaml
+      - tempo_data:/var/tempo
+    networks:
+      - observability
+
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: prometheus
+    user: "0:0"
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
+      - --enable-feature=exemplar-storage
+      - --enable-feature=otlp-network-logging
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    networks:
+      - observability
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    container_name: grafana
+    user: "0:0"
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_FEATURE_TOGGLES_ENABLE=traceToMetrics,publicDashboards,traceqlEditor
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini
+      - ./grafana/provisioning/dashboards/app:/var/lib/grafana/dashboards/app
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
+    networks:
+      - observability
+
+  opentelemetry:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: opentelemetry
+    user: "0:0"
+    command: ["--config=/etc/otel/config.yaml"]
+    volumes:
+      - ./opentelemetry/config.yaml:/etc/otel/config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+      - "54527:54527/udp"
+    depends_on:
+      - loki
+      - prometheus
+      - tempo
+    networks:
+      - observability
+
+networks:
+  observability:
+    driver: bridge
+
+volumes:
+  grafana_data:
+  loki_data:
+  tempo_data:
+  prometheus_data:
