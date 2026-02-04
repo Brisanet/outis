@@ -1,0 +1,56 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+  syslog:
+    udp:
+      listen_address: "0.0.0.0:54527"
+    protocol: rfc3164
+
+processors:
+  batch:
+  
+  transform:
+    log_statements:
+      - context: log
+        statements:
+          - merge_maps(attributes, ParseJSON(body), "insert") where IsMatch(body, "^\\{")
+
+          - set(resource.attributes["service_name"], attributes["service_name"]) where attributes["service_name"] != nil
+          - set(resource.attributes["service.name"], attributes["service_name"]) where attributes["service_name"] != nil
+
+          - set(attributes["trace_id"], attributes["trace_id"]) where attributes["trace_id"] != nil
+
+  resource:
+    attributes:
+      - key: service_name
+        value: "unknown_service"
+        action: insert
+      - key: service.name
+        value: "unknown_service"
+        action: insert
+
+exporters:
+  otlphttp/loki:
+    endpoint: "http://loki:3100/otlp"
+    tls: { insecure: true }
+  otlp/tempo:
+    endpoint: "tempo:4317"
+    tls: { insecure: true }
+  prometheusremotewrite:
+    endpoint: "http://prometheus:9090/api/v1/write"
+    resource_to_telemetry_conversion: { enabled: true }
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp, syslog]
+      processors: [transform, resource, batch]
+      exporters: [otlphttp/loki]
+    traces:
+      receivers: [otlp]
+      processors: [resource, batch]
+      exporters: [otlp/tempo]

@@ -1,0 +1,101 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "links": [],
+  "liveNow": false,
+  "panels": [
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "sum by (service_name) (count_over_time({service_name=~\"$service\"} |= \"$query\" [$__interval]))",
+          "refId": "A"
+        }
+      ],
+      "title": "Volume de Logs por Serviço (Últimos 30min)",
+      "type": "barchart",
+      "options": {
+        "stacking": { "mode": "normal" }
+      }
+    },
+    {
+      "datasource": { "type": "loki", "uid": "loki" },
+      "gridPos": { "h": 18, "w": 24, "x": 0, "y": 8 },
+      "id": 2,
+      "options": {
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true
+      },
+      "links": [
+        {
+          "title": "Investigar Trace Completo",
+          "url": "/explore?orgId=1&left=%5B%22now-30m%22,%22now%22,%22tempo%22,%7B%22query%22:%22%7B+resource.service_name+%3D+%5C%22$service%5C%22+%7D%22,%22queryType%22:%22traceql%22%7D%5D",
+          "targetBlank": true
+        }
+      ],
+      "targets": [
+        {
+          "datasource": { "type": "loki", "uid": "loki" },
+          "expr": "{service_name=~\"$service\"} |= \"$query\"",
+          "refId": "A"
+        }
+      ],
+      "title": "Logs da Aplicação - Live Stream",
+      "type": "logs"
+    }
+  ],
+  "refresh": "5s",
+  "schemaVersion": 39,
+  "templating": {
+    "list": [
+      {
+        "hide": 0,
+        "label": "Busca Log",
+        "name": "query",
+        "options": [],
+        "query": "",
+        "type": "textbox"
+      },
+      {
+        "allValue": ".+",
+        "current": { "selected": true, "text": "All", "value": ".+" },
+        "datasource": { "type": "loki", "uid": "loki" },
+        "definition": "label_values(service_name)",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Serviço",
+        "name": "service",
+        "query": {
+          "label": "service_name",
+          "refId": "LokiVariableQueryEditor-VariableQuery",
+          "stream": "{service_name=~\".+\"}",
+          "type": 1
+        },
+        "refresh": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-30m", "to": "now" },
+  "title": "Observabilidade Geral - Brisanet",
+  "uid": "brisanet-app",
+  "version": 11
+}
