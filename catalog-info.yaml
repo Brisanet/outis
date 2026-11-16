@@ -1,0 +1,14 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: outis
+  title: outis
+  description: "A biblioteca outis ajuda você a criar e gerenciar rotinas, programar tempo de execução e controlar a concorrência entre outros processos."
+  annotations:
+    github.com/project-slug: Brisanet/outis
+  tags:
+    - go
+spec:
+  type: service
+  lifecycle: production
+  owner: group:default/TODO-DEFINIR
